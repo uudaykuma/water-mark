@@ -1,7 +1,8 @@
-'use client';
+'use client'; // Ensure this is a Client Component
+
 import { useState } from 'react';
 
-export default function WatermarkUploader() {
+export default function WatermarkForm() {
   const [file, setFile] = useState(null);
   const [text, setText] = useState('');
   const [type, setType] = useState('');
@@ -14,35 +15,42 @@ export default function WatermarkUploader() {
   };
 
   const handleUpload = async () => {
-    if (!file || !text) return alert("Please select a file and enter watermark text");
+    if (!file || !text) {
+      return alert("Please select a file and enter watermark text");
+    }
 
     const reader = new FileReader();
     reader.onload = async () => {
       const base64File = reader.result.split(',')[1];
 
-      const response = await fetch('/api/watermark', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          file: base64File,
-          text,
-          type,
-        }),
-      });
+      try {
+        const response = await fetch('/api/watermark', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            file: base64File,
+            text,
+            type,
+          }),
+        });
 
-      if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `watermarked.${type}`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      } else {
-        alert('Failed to add watermark');
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `watermarked.${type}`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } else {
+          alert('Failed to add watermark');
+        }
+      } catch (error) {
+        console.error('Error during file upload:', error);
+        alert('Failed to add watermark due to a server error.');
       }
     };
 
