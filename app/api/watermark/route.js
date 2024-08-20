@@ -5,7 +5,7 @@ import { PDFDocument, rgb, degrees } from 'pdf-lib';
 export async function POST(request) {
   try {
     const { file, text, type } = await request.json();
-
+    
     let watermarkedBuffer;
 
     if (type === 'pdf') {
@@ -15,8 +15,6 @@ export async function POST(request) {
 
       pages.forEach((page) => {
         const { width, height } = page.getSize();
-
-        // Apply watermark repeatedly across the page
         const watermarkGap = 100;
         for (let y = 0; y < height; y += watermarkGap) {
           for (let x = 0; x < width; x += watermarkGap) {
@@ -26,7 +24,7 @@ export async function POST(request) {
               size: 30,
               color: rgb(0.75, 0.75, 0.75),
               rotate: degrees(45),
-              opacity: 0.5,
+              opacity: 0.25, // Lower opacity for background effect
             });
           }
         }
@@ -43,8 +41,8 @@ export async function POST(request) {
     } else if (type === 'jpg' || type === 'png') {
       // Process JPG/PNG image
       const image = sharp(Buffer.from(file, 'base64'));
-      const { width, height } = await image.metadata();
-
+      const metadata = await image.metadata();
+      const { width, height } = metadata;
       const watermarkGap = 150;
 
       const svg = `
@@ -58,10 +56,11 @@ export async function POST(request) {
                   (_, colIndex) => `
                     <text x="${colIndex * watermarkGap}" y="${
                     rowIndex * watermarkGap
-                  }" font-size="30" fill="rgba(0, 0, 0, 0.5)"
+                  }" font-size="30" fill="rgba(0, 0, 0, 0.1)" 
                     transform="rotate(-45, ${
                       colIndex * watermarkGap
-                    }, ${rowIndex * watermarkGap})">
+                    }, ${rowIndex * watermarkGap})" 
+                    style="mix-blend-mode: multiply;">
                       ${text}
                     </text>
                   `
@@ -73,7 +72,7 @@ export async function POST(request) {
       `;
 
       watermarkedBuffer = await image
-        .composite([{ input: Buffer.from(svg), gravity: 'center' }])
+        .composite([{ input: Buffer.from(svg), blend: 'multiply' }]) // Apply blend mode
         .toBuffer();
 
       return new Response(watermarkedBuffer, {
